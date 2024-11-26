@@ -23,16 +23,16 @@
 
 int main(void)
 {
-	SystemInit();
-
     DAC_Init();
+    DMA_Init(dma_buffer, BUFFER_SIZE);
     Timer6_Init();
     Timer7_Init();
 
-    generate_sine_table(frequencies[0]);
-    fill_dma_buffer();
+    // Start with the first frequency
+    generate_and_fill_dma_buffer(frequencies[current_freq_index]);
 
-    DMA_Init(dma_buffer, BUFFER_SIZE);
+    // Enable DMA for continuous output
+    DAC->CR |= DAC_CR_DMAEN1;
     while(1)
     {
     }

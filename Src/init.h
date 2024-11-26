@@ -22,12 +22,13 @@ void generate_waveform();
 void generate_sine_table();
 void test();
 void Timer6_Init(void);
+void generate_and_fill_dma_buffer(int frequency);
 extern uint16_t sine_table[SINE_TABLE_SIZE];
 
 extern const int frequencies[];
 extern volatile uint32_t current_index;
 extern volatile uint32_t elapsed_time_ms;
-extern volatile uint8_t current_note_index;
+extern volatile uint8_t current_freq_index;
 
 void switch_to_next_frequency(void);
 void Timer7_Init(void);

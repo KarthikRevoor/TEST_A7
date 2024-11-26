@@ -4,36 +4,30 @@
 #include <stdio.h>
 #include "test_sine.h"
 
-
-
 // Frequencies for musical notes
 const int frequencies[] = {440, 587, 659, 880}; // A4, D5, E5, A5
 const int num_notes = sizeof(frequencies) / sizeof(frequencies[0]);
 
-uint16_t sine_table[SINE_TABLE_SIZE];
-uint16_t dma_buffer[BUFFER_SIZE];
+uint16_t dma_buffer[BUFFER_SIZE]; // Buffer to hold samples
 volatile uint32_t elapsed_time_ms = 0; // Timer-based time tracker
 volatile uint8_t current_freq_index = 0; // Index of the current frequency
 
-void generate_sine_table(int frequency)
-{
-    float step = (float)frequency * TWO_PI / SAMPLE_RATE;
-    for (int i = 0; i < SINE_TABLE_SIZE; i++) {
-        float angle = i * step;
-        sine_table[i] = (uint16_t)((fp_sin(angle) + TRIG_SCALE_FACTOR) * (DAC_RESOLUTION / TRIG_SCALE_FACTOR));
-        printf("The sine tables %d", sine_table[i]);
-    }
-}
+void generate_and_fill_dma_buffer(int frequency) {
+    int cycle_samples = SAMPLE_RATE / frequency; // Samples needed for one cycle
+    int total_samples = (BUFFER_SIZE / cycle_samples) * cycle_samples; // Total samples to fill in buffer
 
-void fill_dma_buffer() {
-    int cycle_samples = SAMPLE_RATE / frequencies[current_freq_index];
-    int index = 0;
+    // Fill the DMA buffer with calculated samples
+    for (int i = 0; i < total_samples; i++) {
+        float angle = (i % cycle_samples) * (TWO_PI / cycle_samples);
+        dma_buffer[i] = (uint16_t)((fp_sin(angle) + TRIG_SCALE_FACTOR) * (DAC_RESOLUTION - 1) / (2 * TRIG_SCALE_FACTOR));
 
-    while (index < BUFFER_SIZE) {
-        for (int j = 0; j < cycle_samples && index < BUFFER_SIZE; j++) {
-            dma_buffer[index++] = sine_table[j % SINE_TABLE_SIZE];
-        }
+        // Debug: Print each DAC value generated
+        printf("DAC Value[%d] = %d\n\r", i, dma_buffer[i]);
     }
+
+    // Debug: Print first few values of the DMA buffer
+    printf("First 5 DMA buffer values: %d, %d, %d, %d, %d\n\r",
+           dma_buffer[0], dma_buffer[1], dma_buffer[2], dma_buffer[3], dma_buffer[4]);
 }
 
 void DAC_Init(void) {
@@ -79,7 +73,7 @@ void Timer7_Init(void) {
     RCC->APB1ENR |= RCC_APB1ENR_TIM7EN;
 
     TIM7->PSC = 47999;
-    TIM7->ARR = 1;
+    TIM7->ARR = 1; // Adjusted for a 1 ms tick
 
     TIM7->DIER |= TIM_DIER_UIE;
     TIM7->CR1 |= TIM_CR1_CEN;
@@ -92,16 +86,17 @@ void TIM7_IRQHandler(void) {
         TIM7->SR &= ~TIM_SR_UIF;
         elapsed_time_ms++;
 
-        if (elapsed_time_ms >= NOTE_DURATION_MS) {
+        if (elapsed_time_ms >= 2000) {  // Switch every 2 seconds
             switch_to_next_frequency();
             elapsed_time_ms = 0;
+            printf("Switching to frequency: %d Hz\n\r", frequencies[current_freq_index]);
         }
     }
 }
 
 void switch_to_next_frequency(void) {
     current_freq_index = (current_freq_index + 1) % num_notes;
-    generate_sine_table(frequencies[current_freq_index]);
-    fill_dma_buffer();
-}
 
+    // Generate and fill the DMA buffer for the current frequency
+    generate_and_fill_dma_buffer(frequencies[current_freq_index]);
+}
