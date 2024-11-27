@@ -23,18 +23,19 @@
 
 int main(void)
 {
-    DAC_Init();
-    DMA_Init(dma_buffer, BUFFER_SIZE);
-    Timer6_Init();
-    Timer7_Init();
+	Generate_SineWave_440(SINE_TABLE_SIZE_440Hz);
+	Generate_SineWave_587(SINE_TABLE_SIZE_587Hz);
+	Generate_SineWave_659(SINE_TABLE_SIZE_659Hz);
+	Generate_SineWave_880(SINE_TABLE_SIZE_880Hz);
+	DMA_Init();
+	Timer6_Init();
+	Timer1_Init();
+	ADC_INIT();
+	DAC_Init();
+	Systick_Init();
 
-    // Start with the first frequency
-    generate_and_fill_dma_buffer(frequencies[current_freq_index]);
 
-    // Enable DMA for continuous output
-    DAC->CR |= DAC_CR_DMAEN1;
-    while(1)
-    {
+while(1){
     }
 
 	return 0;
